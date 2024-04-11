@@ -1,8 +1,8 @@
 ;;; package-recipe-mode.el --- Major-mode for editing package recipes  -*- lexical-binding:t; coding:utf-8 -*-
 
-;; Copyright (C) 2011-2023 Donald Ephraim Curtis
-;; Copyright (C) 2012-2023 Steve Purcell
-;; Copyright (C) 2016-2023 Jonas Bernoulli
+;; Copyright (C) 2011-2024 Donald Ephraim Curtis
+;; Copyright (C) 2012-2024 Steve Purcell
+;; Copyright (C) 2016-2024 Jonas Bernoulli
 ;; Copyright (C) 2009 Phil Hagelberg
 
 ;; Author: Donald Ephraim Curtis <dcurtis@milkbox.net>
@@ -61,7 +61,7 @@
   (setq-local flycheck-checkers nil)
   (setq-local indent-tabs-mode nil)
   (setq-local require-final-newline t)
-  (add-hook 'before-save-hook #'whitespace-cleanup)
+  (add-hook 'before-save-hook #'whitespace-cleanup nil t)
   (message "%s" (substitute-command-keys "\
 Use \\[package-build-current-recipe] to build this recipe, \
 \\[package-build-create-recipe] to create a new recipe")))
