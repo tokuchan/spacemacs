@@ -38,15 +38,13 @@
     (electric-indent-mode :location built-in)
     (ediff :location built-in)
     (eldoc :location built-in)
-    (help-fns+ :location local
-               :toggle (not (fboundp 'describe-keymap))) ; built in emacs28+
     (hi-lock :location built-in)
     (image-mode :location built-in)
     (imenu :location built-in)
-    (occur-mode :location built-in)
     (package-menu :location built-in)
     ;; page-break-lines is shipped with spacemacs core
     (page-break-lines :location built-in)
+    (proced :location built-in)
     (process-menu :location built-in)
     quickrun
     (recentf :location built-in)
@@ -117,7 +115,7 @@
   ;; - `C-c' as a prefix command still works.
   ;; - Activating normal-mode makes evil override the custom-mode-map normal-state
   ;;   its mouse button bindings. So we bind them explicitly in normal-state
-  (evil-define-key 'normal 'custom-mode-map [down-mouse-1] 'widget-button-click)
+  (evil-define-key 'normal custom-mode-map [down-mouse-1] 'widget-button-click)
   ;; - `u' as `Custom-goto-parent' conflicts with Evil undo. However it is
   ;;   questionable whether this will work properly in a Custom buffer;
   ;;   choosing to restore this binding.
@@ -156,7 +154,7 @@
   ;; additional key bindings such as "* ." to dired. To keep the old behavior,
   ;; load dired-x after dired.
   (with-eval-after-load 'dired
-        (require 'dired-x))
+    (require 'dired-x))
   (use-package dired-x
     :commands (dired-jump
                dired-jump-other-window
@@ -209,11 +207,13 @@
      ;; emacs is evil and decrees that vertical shall henceforth be horizontal
      ediff-split-window-function 'split-window-horizontally
      ediff-merge-split-window-function 'split-window-horizontally)
+    :config
     ;; show org ediffs unfolded
-    (require 'outline)
-    (add-hook 'ediff-prepare-buffer-hook #'show-all)
+    (add-hook 'ediff-prepare-buffer-hook 'spacemacs//ediff-buffer-outline-show-all)
     ;; restore window layout when done
-    (add-hook 'ediff-quit-hook #'winner-undo)))
+    (add-hook 'ediff-quit-hook #'winner-undo)
+    (when (fboundp 'spacemacs//ediff-delete-temp-files)
+      (add-hook 'kill-emacs-hook #'spacemacs//ediff-delete-temp-files))))
 
 (defun spacemacs-defaults/init-eldoc ()
   (use-package eldoc
@@ -233,12 +233,6 @@
     (eldoc-add-command #'evil-append)
     (eldoc-add-command #'evil-append-line)
     (eldoc-add-command #'evil-force-normal-state)))
-
-(defun spacemacs-defaults/init-help-fns+ ()
-  (use-package help-fns+
-    :commands (describe-keymap)
-    :init
-    (advice-add 'help-do-xref :after (lambda (_pos _func _args) (setq-local tab-width 8)))))
 
 (defun spacemacs-defaults/init-hi-lock ()
   (with-eval-after-load 'hi-lock
@@ -335,13 +329,10 @@
       :off-message "Line numbers disabled."
       :evil-leader "tnv")
 
-    (when (spacemacs//linum-backward-compabitility)
-      (add-hook 'prog-mode-hook 'display-line-numbers-mode)
-      (add-hook 'text-mode-hook 'display-line-numbers-mode))
-
     ;; it's ok to add an advice before the function is defined, and we must
     ;; add this advice before calling `global-display-line-numbers-mode'
-    (advice-add #'display-line-numbers--turn-on :around #'spacemacs//linum-on)
+    (define-advice display-line-numbers--turn-on (:before-while (&rest _) spacemacs//enable-line-numbers)
+      (spacemacs/enable-line-numbers-p))
     (when dotspacemacs-line-numbers
       ;; delay the initialization of number lines when opening Spacemacs
       ;; normally. If opened via the command line with a file to visit then
@@ -355,10 +346,6 @@
                         lazy-loading-line-numbers)
                     (global-display-line-numbers-mode)))))))
 
-(defun spacemacs-defaults/init-occur-mode ()
-  (evilified-state-evilify-map occur-mode-map
-    :mode occur-mode))
-
 (defun spacemacs-defaults/init-package-menu ()
   (evilified-state-evilify-map package-menu-mode-map
     :mode package-menu-mode))
@@ -367,6 +354,15 @@
   (require 'page-break-lines)
   (global-page-break-lines-mode t)
   (spacemacs|hide-lighter page-break-lines-mode))
+
+(defun spacemacs-defaults/init-proced ()
+  (use-package proced
+    :defer t
+    :config
+    (evilified-state-evilify-map proced-mode-map
+      :mode proced-mode
+      :bindings
+      "gr" 'revert-buffer)))
 
 (defun spacemacs-defaults/init-process-menu ()
   (evilified-state-evilify-map process-menu-mode-map
@@ -392,6 +388,10 @@
       (add-hook 'find-file-hook (lambda () (unless recentf-mode
                                              (recentf-mode)
                                              (recentf-track-opened-file)))))
+    ;; Do not leave dangling timers when reloading the configuration.
+    (when (and (boundp 'recentf-auto-save-timer)
+               (timerp recentf-auto-save-timer))
+      (cancel-timer recentf-auto-save-timer))
     (setq recentf-save-file (concat spacemacs-cache-directory "recentf")
           recentf-max-saved-items 1000
           recentf-auto-cleanup 'never
@@ -412,24 +412,40 @@
     (setq savehist-file (concat spacemacs-cache-directory "savehist")
           enable-recursive-minibuffers t ; Allow commands in minibuffers
           history-length 1000
-          savehist-additional-variables '(mark-ring
-                                          global-mark-ring
-                                          search-ring
+          savehist-additional-variables '(search-ring
                                           regexp-search-ring
                                           extended-command-history
-                                          kill-ring)
-          savehist-autosave-interval 60)
-    (savehist-mode t)))
+                                          kill-ring
+                                          kmacro-ring
+                                          log-edit-comment-ring)
+          ;; We use an idle timer instead, as saving can cause
+          ;; noticable delays with large histories.
+          savehist-autosave-interval nil)
+    (savehist-mode t)
+    (define-advice savehist-save
+        (:around (orig &rest args) spacemacs//kill-ring-no-properties)
+      "Text properties can blow up the savehist file and lead to
+excessive pauses when saving."
+      (if (memq 'kill-ring savehist-additional-variables)
+          (let ((kill-ring (mapcar #'substring-no-properties
+                                   (cl-remove-if-not #'stringp kill-ring))))
+            (apply orig args))
+        (apply orig args)))
+    (when (and (boundp 'spacemacs--savehist-idle-timer)
+               (timerp spacemacs--savehist-idle-timer))
+      (cancel-timer spacemacs--savehist-idle-timer))
+    (setq spacemacs--savehist-idle-timer
+          (run-with-idle-timer
+           spacemacs-savehist-autosave-idle-interval
+           spacemacs-savehist-autosave-idle-interval
+           #'savehist-autosave))))
 
 (defun spacemacs-defaults/init-saveplace ()
   (use-package saveplace
     :init
-    (if (fboundp 'save-place-mode)
-        ;; Emacs 25 has a proper mode for `save-place'
-        (save-place-mode)
-      (setq save-place t))
     ;; Save point position between sessions
-    (setq save-place-file (concat spacemacs-cache-directory "places"))))
+    (setq save-place-file (concat spacemacs-cache-directory "places"))
+    (save-place-mode)))
 
 (defun spacemacs-defaults/init-subword ()
   (use-package subword
@@ -480,10 +496,6 @@
   (use-package whitespace
     :defer t
     :init
-    (when dotspacemacs-show-trailing-whitespace
-      (set-face-attribute
-       'trailing-whitespace nil
-       :background (face-attribute 'font-lock-comment-face :foreground)))
     (add-hook 'prog-mode-hook 'spacemacs//trailing-whitespace)
     (add-hook 'text-mode-hook 'spacemacs//trailing-whitespace)
 
@@ -506,20 +518,26 @@
   (use-package winner
     :commands (winner-undo winner-redo)
     :init
-    (with-eval-after-load 'winner
-      (setq spacemacs/winner-boring-buffers '("*Completions*"
-                                              "*Compile-Log*"
-                                              "*inferior-lisp*"
-                                              "*Fuzzy Completions*"
-                                              "*Apropos*"
-                                              "*Help*"
-                                              "*cvs*"
-                                              "*Buffer List*"
-                                              "*Ibuffer*"
-                                              "*esh command on file*"))
-
-      (setq winner-boring-buffers
-            (append winner-boring-buffers spacemacs/winner-boring-buffers)))))
+    (spacemacs|define-transient-state winner
+      :title "Winner transient state"
+      :bindings
+      ("u" winner-undo "winner-undo")
+      ("U" winner-redo "winner-redo (redo all)"))
+    (setq spacemacs/winner-boring-buffers '("*Completions*"
+                                            "*Compile-Log*"
+                                            "*inferior-lisp*"
+                                            "*Fuzzy Completions*"
+                                            "*Apropos*"
+                                            "*Help*"
+                                            "*cvs*"
+                                            "*Buffer List*"
+                                            "*Ibuffer*"
+                                            "*esh command on file*"))
+    :config
+    (setq winner-boring-buffers
+          (append winner-boring-buffers spacemacs/winner-boring-buffers))
+    (with-eval-after-load 'which-key
+      (add-to-list 'winner-boring-buffers which-key-buffer-name))))
 
 (defun spacemacs-defaults/init-xref ()
   (evilified-state-evilify-map xref--xref-buffer-mode-map

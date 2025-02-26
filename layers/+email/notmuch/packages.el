@@ -25,6 +25,8 @@
   '(
     (counsel-notmuch :requires ivy)
     (helm-notmuch :requires helm)
+    (consult-notmuch :requires consult)
+    company
     notmuch
     org
     persp-mode
@@ -40,6 +42,11 @@
   (use-package helm-notmuch
     :defer t
     :init (spacemacs/set-leader-keys "aenn" 'helm-notmuch)))
+
+(defun notmuch/init-consult-notmuch ()
+  (use-package consult-notmuch
+    :defer t
+    :init (spacemacs/set-leader-keys "aenn" 'consult-notmuch)))
 
 (defun notmuch/init-ol-notmuch ()
   (use-package ol-notmuch)
@@ -149,9 +156,10 @@
       (kbd "gr") 'notmuch-refresh-this-buffer
       (kbd "gR") 'notmuch-refresh-all-buffers
       (kbd "G") 'notmuch-search-last-thread
-      (kbd "M") 'compose-mail-other-frame)
+      (kbd "M") 'compose-mail-other-frame)))
 
-    (spacemacs|add-company-backends :backends notmuch-company :modes notmuch-message-mode)))
+(defun notmuch/post-init-company ()
+  (spacemacs|add-company-backends :backends notmuch-company :modes notmuch-message-mode))
 
 (defun notmuch/pre-init-org ()
   (spacemacs|use-package-add-hook org

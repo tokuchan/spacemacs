@@ -56,9 +56,7 @@ The return value is nil if no font was found, truthy otherwise."
           ;; default-frame-alist, and Customization causes issues, see
           ;; https://github.com/syl20bnr/spacemacs/issues/5353.
           ;; INHIBIT-CUSTOMIZE is only present in recent emacs versions.
-          (if (version< emacs-version "28.0.90")
-              (set-frame-font fontspec nil t)
-            (set-frame-font fontspec nil t t))
+          (set-frame-font fontspec nil t t)
           (push `(font . ,(frame-parameter nil 'font)) default-frame-alist)
 
           ;; Make sure that our font is used for fixed-pitch face as well
@@ -117,14 +115,6 @@ The return value is nil if no font was found, truthy otherwise."
   (let ((scale (if (and (boundp 'powerline-scale) powerline-scale)
                    powerline-scale 1)))
     (truncate (* scale (frame-char-height)))))
-
-(defun spacemacs/set-font (&rest args)
-  "Deprecated function, display a warning message."
-  (spacemacs-buffer/warning (concat "spacemacs/set-font is deprecated. "
-                             "Use the variable `dotspacemacs-default-font' "
-                             "instead (see Font section in "
-                             "~/.emacs.d/doc/DOCUMENTATION.org for more "
-                             "info).")))
 
 (defmacro spacemacs|diminish (mode &optional unicode ascii)
   "Diminish MODE name in mode line to UNICODE or ASCII depending on the value

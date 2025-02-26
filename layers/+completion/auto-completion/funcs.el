@@ -175,8 +175,8 @@ MODE parameter must match the :modes values used in the call to
         (define-key map [return] 'company-complete-selection)
         (define-key map (kbd "RET") 'company-complete-selection))
        (t
-        (define-key map [return] 'nil)
-        (define-key map (kbd "RET") 'nil)))))
+        (define-key map [return] nil)
+        (define-key map (kbd "RET") nil)))))
    (t (message "Not yet implemented for package %S" package))))
 
 (defun spacemacs//auto-completion-set-TAB-key-behavior (package)
@@ -206,6 +206,7 @@ MODE parameter must match the :modes values used in the call to
   (when auto-completion-complete-with-key-sequence
     (let ((first-key (elt auto-completion-complete-with-key-sequence 0)))
       (cond ((eq 'company package)
+             (evil-declare-change-repeat 'spacemacs//auto-completion-key-sequence-end)
              (define-key company-active-map (kbd (char-to-string first-key))
                'spacemacs//auto-completion-key-sequence-start))
             (t (message "Not yet implemented for package %S" package))))))
@@ -318,18 +319,6 @@ MODE parameter must match the :modes values used in the call to
     (dolist (map (list company-active-map company-search-map))
       (define-key map (kbd "C-n") 'company-select-next)
       (define-key map (kbd "C-p") 'company-select-previous)))))
-
-
-
-(defvar-local company-fci-mode-on-p nil)
-
-(defun company-turn-off-fci (&rest ignore)
-  (when (boundp 'fci-mode)
-    (setq company-fci-mode-on-p fci-mode)
-    (when fci-mode (fci-mode -1))))
-
-(defun company-maybe-turn-on-fci (&rest ignore)
-  (when company-fci-mode-on-p (fci-mode 1)))
 
 
 ;; helm-yas

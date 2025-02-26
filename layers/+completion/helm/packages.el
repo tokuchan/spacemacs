@@ -28,14 +28,14 @@
     helm
     (helm-ag :location (recipe
                         :fetcher github
-                        :repo "zozowell/helm-ag"
-                        :branch "further-support-rg"))
+                        :repo "smile13241324/helm-ag"))
     helm-comint
     helm-descbinds
     (helm-ls-git :toggle (configuration-layer/layer-used-p 'git))
     helm-make
     helm-mode-manager
     helm-org
+    (helm-posframe :toggle helm-use-posframe)
     helm-projectile
     helm-swoop
     helm-themes
@@ -132,14 +132,13 @@
     (spacemacs||set-helm-key "sgG"  spacemacs/helm-file-do-grep-region-or-symbol)
     ;; various key bindings
     (spacemacs||set-helm-key "fel" helm-locate-library)
-    (spacemacs||set-helm-key "hdm" describe-mode)
     (spacemacs||set-helm-key "hdx" spacemacs/describe-ex-command)
     (spacemacs||set-helm-key "swg" helm-google-suggest)
     (with-eval-after-load 'helm-files
       (define-key helm-find-files-map
-        (kbd "C-c C-e") 'spacemacs/helm-find-files-edit)
+                  (kbd "C-c C-e") 'spacemacs/helm-find-files-edit)
       (define-key helm-find-files-map
-        (kbd "S-<return>") 'helm-ff-run-switch-other-window)
+                  (kbd "S-<return>") 'helm-ff-run-switch-other-window)
       (defun spacemacs//add-action-helm-find-files-edit ()
         (helm-add-action-to-source
          "Edit files in dired `C-c C-e'" 'spacemacs//helm-find-files-edit
@@ -148,7 +147,7 @@
                 'spacemacs//add-action-helm-find-files-edit))
     (with-eval-after-load 'helm-buffers
       (define-key helm-buffer-map
-        (kbd "S-<return>") 'helm-buffer-switch-other-window))
+                  (kbd "S-<return>") 'helm-buffer-switch-other-window))
     ;; Add minibuffer history with `helm-minibuffer-history'
     (define-key minibuffer-local-map (kbd "C-c C-l") 'helm-minibuffer-history)
     ;; Delay this key bindings to override the defaults
@@ -192,6 +191,12 @@
     (setq helm-white-buffer-regexp-list
           (append helm-white-buffer-regexp-list
                   spacemacs-useful-buffers-regexp))
+
+    ;; allow to leave helm result groups with evil bindings
+    (setq helm-move-to-line-cycle-in-source nil)
+    ;; allow find file on non-exists file at point
+    (setq helm-ff-allow-non-existing-file-at-point t)
+
     ;; use helm to switch last(/previous) visited buffers with C(-S)-tab
     (define-key helm-map (kbd "<C-tab>") 'helm-follow-action-forward)
     (define-key helm-map (kbd "<C-iso-lefttab>") 'helm-follow-action-backward)
@@ -200,19 +205,19 @@
       (define-key helm-bookmark-map (kbd "C-d") 'helm-bookmark-run-delete)
       (define-key helm-bookmark-map (kbd "C-e") 'helm-bookmark-run-edit)
       (define-key helm-bookmark-map
-        (kbd "C-f") 'helm-bookmark-toggle-filename)
+                  (kbd "C-f") 'helm-bookmark-toggle-filename)
       (define-key helm-bookmark-map
-        (kbd "S-<return>") 'helm-bookmark-run-jump-other-window)
+                  (kbd "S-<return>") 'helm-bookmark-run-jump-other-window)
       (define-key helm-bookmark-map (kbd "C-/") 'helm-bookmark-help))
     (with-eval-after-load 'helm-bookmark
       (simpler-helm-bookmark-keybindings))
     (when (configuration-layer/package-used-p 'winum)
       (define-key helm-buffer-map
-        (kbd "RET") 'spacemacs/helm-find-buffers-windows)
+                  (kbd "RET") 'spacemacs/helm-find-buffers-windows)
       (define-key helm-generic-files-map
-        (kbd "RET") 'spacemacs/helm-find-files-windows)
+                  (kbd "RET") 'spacemacs/helm-find-files-windows)
       (define-key helm-find-files-map
-        (kbd "RET") 'spacemacs/helm-find-files-windows))))
+                  (kbd "RET") 'spacemacs/helm-find-files-windows))))
 
 (defun helm/init-helm-comint ()
   (use-package helm-comint
@@ -228,17 +233,17 @@
     ;; to search using rg/ag/pt/whatever instead of just grep
     (with-eval-after-load 'helm-projectile
       (define-key helm-projectile-projects-map
-        (kbd "C-s") 'spacemacs/helm-projectile-grep)
+                  (kbd "C-s") 'spacemacs/helm-projectile-grep)
       ;; `spacemacs/helm-projectile-grep' calls:
       ;; `spacemacs/helm-project-smart-do-search-in-dir'
       ;; which needs to be an action.
       ;; Delete the current action.
       (helm-delete-action-from-source
-        "Grep in projects `C-s'" helm-source-projectile-projects)
+       "Grep in projects `C-s'" helm-source-projectile-projects)
       (helm-add-action-to-source
-        "Search in projects `C-s'"
-        'spacemacs/helm-project-smart-do-search-in-dir
-        helm-source-projectile-projects))
+       "Search in projects `C-s'"
+       'spacemacs/helm-project-smart-do-search-in-dir
+       helm-source-projectile-projects))
 
     (spacemacs/set-leader-keys
       ;; helm-ag marks
@@ -321,13 +326,21 @@
   (use-package helm-ls-git
     :defer t
     :init
-    (spacemacs/set-leader-keys "gff" 'helm-ls-git-ls)
+    (spacemacs/set-leader-keys "gff" 'helm-ls-git)
     (when (configuration-layer/package-usedp 'magit)
       ;; Do not use helm-ls-git-rebase-todo-mode for git-rebase-todo,
       ;; instead let it be handled by magit
-      (delete '("/git-rebase-todo$" . helm-ls-git-rebase-todo-mode) auto-mode-alist))
+      (setq auto-mode-alist
+            (delete '("/git-rebase-todo$" . helm-ls-git-rebase-todo-mode)
+                    auto-mode-alist)))
     :config
+    (add-hook 'helm-ls-git-commit-mode-hook 'display-fill-column-indicator-mode)
     (when (configuration-layer/package-usedp 'magit)
+      ;; Undo the forced action of adding helm-ls-git-rebase-todo-mode to
+      ;; auto-mode-alist by helm-ls-git.
+      (setq auto-mode-alist
+            (delete '("/git-rebase-todo$" . helm-ls-git-rebase-todo-mode)
+                    auto-mode-alist))
       ;; Set `helm-ls-git-status-command' conditonally on `git' layer
       ;; If `git' is in use, use default `\'magit-status-setup-buffer'
       ;; Otherwise, use defaault `\'vc-dir'
@@ -354,6 +367,20 @@
   (use-package helm-org
     :commands (helm-org-in-buffer-headings)
     :defer (spacemacs/defer)))
+
+(defun helm/init-helm-posframe ()
+  (use-package helm-posframe
+    :defer t
+    :init
+    (setq helm-posframe-poshandler 'posframe-poshandler-frame-center)
+    (setq helm-posframe-width (round (* 0.618 (frame-width))))
+    (setq helm-posframe-height (round (* 0.618 (frame-height))))
+    (setq helm-posframe-parameters
+          '((internal-border-width . 2)
+            (left-fringe . 4)
+            (right-fringe . 4)
+            (undecorated . nil)))
+    (helm-posframe-enable)))
 
 (defun helm/pre-init-helm-projectile ()
   ;; overwrite projectile settings
@@ -389,7 +416,7 @@
       'helm-projectile-grep)
     :config (when (configuration-layer/package-used-p 'winum)
               (define-key helm-projectile-find-file-map
-                (kbd "RET") 'spacemacs/helm-find-files-windows))))
+                          (kbd "RET") 'spacemacs/helm-find-files-windows))))
 
 (defun helm/init-helm-spacemacs-help ()
   (use-package helm-spacemacs-help

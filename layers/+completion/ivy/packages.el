@@ -88,7 +88,6 @@
       "hda" 'counsel-apropos
       "hdf" 'counsel-describe-function
       "hdF" 'counsel-describe-face
-      "hdm" 'spacemacs/describe-mode
       "hdv" 'counsel-describe-variable
       "hdx" 'spacemacs/describe-ex-command
       "hi"  'counsel-info-lookup-symbol
@@ -281,9 +280,6 @@
       (define-key mode-map "U" 'ivy-occur-revert-buffer))
     (ivy-set-occur 'spacemacs/counsel-search
                    'spacemacs//counsel-occur)
-    (spacemacs/set-leader-keys-for-major-mode 'ivy-occur-grep-mode
-      "w" 'spacemacs/ivy-wgrep-change-to-wgrep-mode
-      "s" 'wgrep-save-all-buffers)
 
     ;; emacs 27 extend line for ivy highlight
     (setf (alist-get 't ivy-format-functions-alist)
@@ -426,8 +422,7 @@
       "sB" 'swiper-all-thing-at-point)
     (global-set-key "\C-s" 'swiper)))
 
-(defun ivy/init-wgrep ()
-  (evil-define-key 'normal wgrep-mode-map ",," 'wgrep-finish-edit)
-  (evil-define-key 'normal wgrep-mode-map ",c" 'wgrep-finish-edit)
-  (evil-define-key 'normal wgrep-mode-map ",a" 'wgrep-abort-changes)
-  (evil-define-key 'normal wgrep-mode-map ",k" 'wgrep-abort-changes))
+(defun ivy/post-init-wgrep ()
+  (spacemacs/set-leader-keys-for-major-mode 'ivy-occur-grep-mode
+    "w" 'spacemacs/grep-change-to-wgrep-mode
+    "s" 'wgrep-save-all-buffers))

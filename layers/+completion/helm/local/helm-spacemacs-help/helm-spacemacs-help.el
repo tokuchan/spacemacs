@@ -129,6 +129,8 @@
               (cond
                ((string-equal r "BEGINNERS_TUTORIAL.org")
                 `("Beginners tutorial" . ,r))
+               ((string-equal r "CI_PLUMBING.org")
+                `("CI setup on GitHub" . ,r))
                ((string-equal r "CONTRIBUTING.org")
                 `("How to contribute to Spacemacs" . ,r))
                ((string-equal r "CONVENTIONS.org")
@@ -288,19 +290,34 @@
   "Return the sorted candidates for all the dospacemacs variables."
   (sort (dotspacemacs/get-variable-string-list) 'string<))
 
+(defun helm-spacemacs-help//layer-action-get-directory (candidate)
+  "Get directory of layer passed CANDIDATE."
+  (configuration-layer/get-layer-path (intern candidate)))
+
 (defun helm-spacemacs-help//layer-action-open-file
     (file candidate &optional edit)
-  "Open FILE of the passed CANDIDATE.  If EDIT is false, open in view mode."
-  (let ((path (configuration-layer/get-layer-path (intern candidate))))
-    (if (and (equal (file-name-extension file) "org")
-             (not helm-current-prefix-arg))
-        (if edit
-            (find-file (concat path file))
-          (spacemacs/view-org-file (concat path file) "^" 'all))
-      (let ((filepath (concat path file)))
-        (if (file-exists-p filepath)
-            (find-file filepath)
-          (message "%s does not have %s" candidate file))))))
+  "Open FILE of the passed CANDIDATE.
+If the file does not exist and EDIT is true, create it; otherwise fall back
+to opening dired at the layer directory.
+If EDIT is false, and unless given a prefix argument,
+open org files in view mode."
+  (let* ((path (configuration-layer/get-layer-path (intern candidate)))
+         (filepath (concat path file)))
+    (cond ((and (equal (file-name-extension file) "org")
+                (not edit)
+                (not helm-current-prefix-arg)
+                (file-exists-p filepath))
+           (spacemacs/view-org-file filepath "^" 'all))
+          ((or edit (file-exists-p filepath))
+           (find-file filepath))
+          (t
+           (message "%s does not have %s" candidate file)
+           (helm-spacemacs-help//layer-action-open-dired candidate)))))
+
+(defun helm-spacemacs-help//layer-action-open-dired (candidate)
+  "Open dired at the location of the passed layer CANDIDATE."
+  (dired
+   (helm-spacemacs-help//layer-action-get-directory candidate)))
 
 (defun helm-spacemacs-help//layer-action-open-readme (candidate)
   "Open the `README.org' file of the passed CANDIDATE for reading."

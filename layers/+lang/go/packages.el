@@ -25,8 +25,8 @@
   '(
     company
     dap-mode
-    (company-go :requires company)
-    counsel-gtags
+    (company-go :requires company
+                :toggle (eq go-backend 'go-mode))
     eldoc
     flycheck
     (flycheck-golangci-lint :toggle (and go-use-golangci-lint
@@ -58,9 +58,6 @@
   (when (eq go-backend 'lsp)
     (add-to-list 'spacemacs--dap-supported-modes 'go-mode))
   (add-hook 'go-mode-local-vars-hook #'spacemacs//go-setup-dap))
-
-(defun go/post-init-counsel-gtags ()
-  (spacemacs/counsel-gtags-define-keys-for-mode 'go-mode))
 
 (defun go/post-init-eldoc ()
   (add-hook 'go-mode-local-vars-hook #'spacemacs//go-setup-eldoc))
